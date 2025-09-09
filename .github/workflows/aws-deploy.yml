@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build app
+      - name: Build the Next.js app
         run: npm run build
 
       - name: Deploy to AWS EC2 over SSH
@@ -32,24 +32,22 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           GH_PAT: ${{ secrets.GH_PAT }}  # GitHub Personal Access Token
         run: |
-          echo "Setting up SSH access..."
+          echo "Connecting to EC2..."
+
+          # Setup SSH
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
-          echo "Connecting to EC2 and deploying app..."
-
-          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" << 'EOF'
+          # Connect to EC2 and deploy
+          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" << EOF
             set -e
 
-            # Set necessary variables inside remote session
-            EC2_USER="ubuntu"  # 👈 Replace if different
+            echo "Deploying on EC2..."
             REPO_URL="https://${GH_PAT}@github.com/${{ github.repository }}.git"
             APP_DIR="/home/$EC2_USER/nextjs-mongo-app"
-
-            echo "Cloning or updating the repository..."
 
             if [ ! -d "$APP_DIR/.git" ]; then
               mkdir -p "$APP_DIR"
@@ -61,16 +59,12 @@ jobs:
             git checkout main || true
             git pull origin main || true
 
-            echo "Writing environment variables..."
             echo "MONGODB_URI=${MONGODB_URI}" > .env.local
 
-            echo "Installing dependencies and building app..."
             npm install
             npm run build
 
-            echo "Restarting app with PM2..."
             export MONGODB_URI="${MONGODB_URI}"
-
             if pm2 describe nextjs-app > /dev/null; then
               pm2 restart nextjs-app --update-env
             else
@@ -78,4 +72,5 @@ jobs:
             fi
 
             pm2 save || true
+            echo "✅ Deployment complete!"
           EOF
