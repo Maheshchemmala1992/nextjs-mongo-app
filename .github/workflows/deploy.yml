@@ -1,0 +1,70 @@
+name: Deploy Next.js to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps
+        run: npm install
+
+      - name: Build (optional - build again on EC2 too)
+        run: npm run build
+
+      - name: Deploy to AWS EC2 over SSH
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key "$EC2_USER"@"$EC2_HOST" << EOF
+            set -e
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+            APP_DIR="/home/$EC2_USER/nextjs-mongo-app"
+
+            # Clone if not present
+            if [ ! -d "$APP_DIR/.git" ]; then
+              mkdir -p "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin
+            git checkout main || true
+            git pull origin main || true
+
+            # Ensure env for build & runtime
+            echo "MONGODB_URI=${MONGODB_URI}" > .env.local
+
+            # Install & build
+            npm install
+            npm run build
+
+            # Start/Restart with PM2 (expects pm2 installed globally)
+            export MONGODB_URI="${MONGODB_URI}"
+            if pm2 describe nextjs-app > /dev/null; then
+              pm2 restart nextjs-app --update-env
+            else
+              pm2 start npm --name "nextjs-app" -- start
+            fi
+            pm2 save || true
+          EOF
