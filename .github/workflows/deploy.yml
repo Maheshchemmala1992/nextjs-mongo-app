@@ -30,6 +30,7 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
+          GH_PAT: ${{ secrets.GH_PAT }}  # GitHub token in secrets
         run: |
           mkdir -p ~/.ssh
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
@@ -38,7 +39,7 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key "$EC2_USER"@"$EC2_HOST" << EOF
             set -e
-            REPO_URL="https://github.com/${{ github.repository }}.git"
+            REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
             APP_DIR="/home/$EC2_USER/nextjs-mongo-app"
 
             # Clone if not present
@@ -59,7 +60,7 @@ jobs:
             npm install
             npm run build
 
-            # Start/Restart with PM2 (expects pm2 installed globally)
+            # Start/Restart with PM2
             export MONGODB_URI="${MONGODB_URI}"
             if pm2 describe nextjs-app > /dev/null; then
               pm2 restart nextjs-app --update-env
