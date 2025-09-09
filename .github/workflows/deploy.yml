@@ -32,11 +32,22 @@ jobs:
           EC2_USER: ${{ secrets.EC2_USER }}
           GH_PAT: ${{ secrets.GH_PAT }}  # GitHub token in secrets
         run: |
+          echo "EC2_SSH_KEY is: $EC2_SSH_KEY"
+          echo "EC2_USER is: $EC2_USER"
+          echo "EC2_HOST is: $EC2_HOST"
+          
+          # Ensure the .ssh directory exists and has the right permissions
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh  # Correct permissions for .ssh directory
+          
+          # Write the SSH key to a file
           echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          
+          # Scan and add the host key for your EC2 instance to known hosts
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
+          # Proceed with SSH commands
           ssh -i ~/.ssh/deploy_key "$EC2_USER"@"$EC2_HOST" << EOF
             set -e
             REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
