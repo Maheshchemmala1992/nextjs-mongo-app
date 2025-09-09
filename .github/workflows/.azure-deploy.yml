@@ -1,24 +1,27 @@
-name: Deploy Next.js to Azure App Service
+name: Deploy Next.js + MongoDB to Azure App Service
 
 on:
   push:
-    branches: [ "azure-deploy" ]
+    branches:
+      - azure-deploy  # Trigger deployment only on this branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm install
 
-      - name: Build
+      - name: Build Next.js app
         run: npm run build
 
       - name: Deploy to Azure Web App
@@ -27,3 +30,18 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
+
+      - name: Set MongoDB URI in Azure App Settings
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az login --service-principal \
+              -u ${{ secrets.AZURE_CLIENT_ID }} \
+              -p ${{ secrets.AZURE_CLIENT_SECRET }} \
+              --tenant ${{ secrets.AZURE_TENANT_ID }}
+
+            az webapp config appsettings set \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group mahesh \
+              --settings MONGODB_URI=${{ secrets.MONGODB_URI }}
