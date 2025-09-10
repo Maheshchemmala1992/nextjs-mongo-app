@@ -1,3 +1,4 @@
+// pages/index.js
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -8,9 +9,13 @@ export default function Home() {
   const [error, setError] = useState("");
 
   const fetchTopics = async () => {
-    const res = await fetch("/api/topics");
-    const data = await res.json();
-    setTopics(data);
+    try {
+      const res = await fetch("/api/topics");
+      const data = await res.json();
+      setTopics(data);
+    } catch (e) {
+      console.error("❌ Failed to fetch topics:", e);
+    }
   };
 
   useEffect(() => {
@@ -27,12 +32,18 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description }),
       });
-      if (!res.ok) throw new Error("Failed");
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to add topic");
+      }
+
       setTitle("");
       setDescription("");
       await fetchTopics();
     } catch (e) {
-      setError("Failed to add topic");
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -56,9 +67,9 @@ export default function Home() {
           onChange={(e) => setDescription(e.target.value)}
           required
         />
-        <button disabled={loading} type="submit">{
-          loading ? "Adding..." : "Add Topic"
-        }</button>
+        <button disabled={loading} type="submit">
+          {loading ? "Adding..." : "Add Topic"}
+        </button>
         {error && <p style={{ color: "crimson" }}>{error}</p>}
       </form>
 
@@ -67,6 +78,10 @@ export default function Home() {
         {topics.map((t) => (
           <li key={t._id}>
             <strong>{t.title}</strong>: {t.description}
+            <br />
+            <small style={{ color: "gray" }}>
+              Added: {new Date(t.createdAt).toLocaleString()}
+            </small>
           </li>
         ))}
       </ul>
