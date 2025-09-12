@@ -3,7 +3,7 @@ name: Deploy Next.js to AWS EC2
 on:
   push:
     branches:
-      - main
+      - main   # Trigger deployment when pushing to main branch
 
 jobs:
   build-and-deploy:
@@ -42,12 +42,16 @@ jobs:
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
           # Connect to EC2 and deploy
-          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" << EOF
+          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" << 'EOF'
             set -e
 
             echo "🚀 Deploying on EC2..."
-            REPO_URL="https://github.com/${{ github.repository }}.git"
-            APP_DIR="/home/$EC2_USER/nextjs-mongo-app"
+
+            REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+            APP_DIR="/home/ubuntu/nextjs-mongo-app"
+
+            echo "APP_DIR is: $APP_DIR"
+            echo "REPO_URL is: $REPO_URL"
 
             if [ ! -d "$APP_DIR/.git" ]; then
               mkdir -p "$APP_DIR"
