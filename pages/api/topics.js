@@ -1,4 +1,5 @@
 // pages/api/topics.js
+
 import clientPromise from "../../lib/mongodb";
 
 export default async function handler(req, res) {
@@ -8,16 +9,14 @@ export default async function handler(req, res) {
     const collection = db.collection("topics");
 
     if (req.method === "POST") {
-      const { title, description } = req.body || {};
+      const { title, content } = req.body;
 
-      if (!title || !description) {
-        return res.status(400).json({ message: "Title and description required" });
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
       }
 
-      const doc = { title, description, createdAt: new Date() };
-      const result = await collection.insertOne(doc);
-
-      return res.status(201).json({ _id: result.insertedId, ...doc });
+      const result = await collection.insertOne({ title, content, createdAt: new Date() });
+      return res.status(201).json({ message: "Topic added", topicId: result.insertedId });
     }
 
     if (req.method === "GET") {
@@ -25,9 +24,14 @@ export default async function handler(req, res) {
       return res.status(200).json(topics);
     }
 
-    return res.status(405).json({ message: "Method Not Allowed" });
+    res.setHeader("Allow", ["GET", "POST"]);
+    return res.status(405).json({ error: `Method ${req.method} not allowed` });
+
   } catch (error) {
-    console.error("❌ Error in /api/topics:", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    console.error("❌ API error:", error);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      details: error.message,
+    });
   }
 }
