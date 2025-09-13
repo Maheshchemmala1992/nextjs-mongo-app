@@ -1,6 +1,13 @@
 // pages/api/topics.js
 import clientPromise from "../../lib/mongodb";
 
+// ✅ Ensure Next.js parses JSON automatically
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 export default async function handler(req, res) {
   try {
     const client = await clientPromise;
@@ -8,14 +15,23 @@ export default async function handler(req, res) {
     const collection = db.collection("topics");
 
     if (req.method === "POST") {
-      const { title, description } = req.body;  // ✅ match frontend
+      // ✅ Frontend sends { title, description }
+      const { title, description } = req.body;
 
       if (!title || !description) {
         return res.status(400).json({ error: "Title and description are required" });
       }
 
-      const result = await collection.insertOne({ title, description, createdAt: new Date() });
-      return res.status(201).json({ message: "Topic added", topicId: result.insertedId });
+      const result = await collection.insertOne({
+        title,
+        description,
+        createdAt: new Date(),
+      });
+
+      return res.status(201).json({
+        message: "✅ Topic added successfully",
+        topicId: result.insertedId,
+      });
     }
 
     if (req.method === "GET") {
