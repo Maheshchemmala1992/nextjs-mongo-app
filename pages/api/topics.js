@@ -1,5 +1,4 @@
 // pages/api/topics.js
-
 import clientPromise from "../../lib/mongodb";
 
 export default async function handler(req, res) {
@@ -9,13 +8,13 @@ export default async function handler(req, res) {
     const collection = db.collection("topics");
 
     if (req.method === "POST") {
-      const { title, content } = req.body;
+      const { title, description } = req.body;  // ✅ match frontend
 
-      if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
+      if (!title || !description) {
+        return res.status(400).json({ error: "Title and description are required" });
       }
 
-      const result = await collection.insertOne({ title, content, createdAt: new Date() });
+      const result = await collection.insertOne({ title, description, createdAt: new Date() });
       return res.status(201).json({ message: "Topic added", topicId: result.insertedId });
     }
 
